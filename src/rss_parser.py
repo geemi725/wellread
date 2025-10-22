@@ -2,6 +2,7 @@ import feedparser
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any
 import asyncio
+import re
 
 
 class RSSFeedParser:
@@ -140,3 +141,57 @@ class RSSFeedParser:
                 continue
 
         return filtered_items
+
+
+class RSSNewsParser:
+    def __init__(self,url: str):
+        self.url = url
+
+    def parse_rss_feed(rss_content):
+        """
+        Parse RSS feed and extract article information
+        
+        Args:
+            rss_content: RSS feed as string or URL
+        
+        Returns:
+            List of dictionaries containing article info
+        """
+        # Parse the feed (works with both URLs and strings)
+        feed = feedparser.parse(rss_content)
+        feed_name = rss_content.split("/")[2]
+        articles = []
+        for entry in feed.entries:
+            desc = entry.get('description', '')
+            date = entry.get('published', '')
+
+            # override description for Hacker News
+            if feed_name == 'hnrss.org':
+                desc = ''
+            # remove html tags, markdown links, markdown images for other feeds
+            else:
+                #remove html tags
+                desc = re.sub(r'<[^>]*>', '', desc)
+                #remove markdown links
+                desc = re.sub(r'\[.*?\]\((.*?)\)', '', desc)
+                #remove markdown images
+                desc = re.sub(r'!\[.*?\]\((.*?)\)', '', desc)
+            if date != '':
+                try:    
+                    date = datetime.strptime(date, '%a, %d %b %Y %H:%M:%S %z')
+                    formatted_date = date.strftime("%a, %d %b %Y")
+                except ValueError:
+                    formatted_date = date
+            else:
+                formatted_date = "unknown date"
+                
+            article = {
+                'title': entry.get('title', 'No title'),
+                'link': entry.get('link', ''),
+                'description': desc,
+                'published': formatted_date,
+                'feed_source': feed_name,
+            }
+            articles.append(article)
+        
+        return articles

@@ -8,6 +8,7 @@ from openai import OpenAI
 from anthropic import Anthropic
 from tqdm import tqdm
 from diskcache import Cache
+from prompts import LLM_SELECT_PROMPT
 
 
 class ContentCurator:
@@ -179,7 +180,6 @@ class ContentCurator:
     async def llm_select_items(
         self,
         shortlist: List[Dict[str, Any]],
-        topics: List[str],
         guidance_prompt: str,
         max_items: int,
         model: str = "claude-sonnet-4-5-20250929"
@@ -200,33 +200,18 @@ class ContentCurator:
             items_summary.append({
                 'index': idx,
                 'title': item.get('title', 'No title'),
-                'source': item.get('feedSource', 'Unknown source'),
-                'relevance_score': item.get('relevanceScore', 0),
-                'creator': item.get('creator', 'Unknown'),
-                'description': (item.get('description') or item.get('content') or '')[:500]  # Truncate long descriptions
+                'source': item.get('feed_source', 'Unknown source'),
+                'description': item.get('description', '')
             })
 
         # Create the selection prompt
-        prompt = f"""You are a content curator selecting the most relevant articles from a shortlist.
+        prompt = LLM_SELECT_PROMPT.format(
+            guidance_prompt=guidance_prompt,
+            shortlist_size=len(shortlist),
+            items_summary=json.dumps(items_summary, indent=2),
+            max_items=max_items
+        )
 
-Topics of interest:
-{chr(10).join(f"- {topic}" for topic in topics)}
-
-Selection guidance:
-{guidance_prompt}
-
-Here are the {len(shortlist)} articles in the shortlist (with their embedding-based relevance scores):
-
-{json.dumps(items_summary, indent=2)}
-
-Please select the top {max_items} articles that best match the topics and guidance.
-
-Respond with ONLY a JSON array containing ALL articles with the following format:
-[
-  {{"index": 0, "selected": true, "explanation": "rationale for selection/rejection (one sentence)"}},
-  {{"index": 1, "selected": false, "explanation": "rationale for selection/rejection (one sentence)"}},
-  ...
-]"""
 
         # Call the LLM
         loop = asyncio.get_event_loop()
@@ -246,14 +231,17 @@ Respond with ONLY a JSON array containing ALL articles with the following format
         response_text = message.content[0].text.strip()
 
         # Extract JSON from response (handle cases where LLM adds extra text)
-        # Try to find JSON array in the response
-        start_idx = response_text.find('[')
-        end_idx = response_text.rfind(']') + 1
-        if start_idx != -1 and end_idx > start_idx:
-            json_str = response_text[start_idx:end_idx]
-            selection_results = json.loads(json_str)
-        else:
+        try:
             selection_results = json.loads(response_text)
+        except json.JSONDecodeError:
+            start_idx = response_text.find('[')
+            end_idx = response_text.rfind(']') + 1
+            if start_idx != -1 and end_idx > start_idx:
+                json_str = response_text[start_idx:end_idx]
+                selection_results = json.loads(json_str)
+            else:
+                print(f"Error parsing JSON from response: {response_text}")
+                selection_results = []
 
         # Extract selected items and attach explanations
         selected_items = []
@@ -263,22 +251,19 @@ Respond with ONLY a JSON array containing ALL articles with the following format
 
             idx = result.get('index')
             is_selected = result.get('selected', False)
-            explanation = result.get('explanation', '')
 
             original_item = shortlist[idx]
-            print(f"{original_item.get('title')} selected: {is_selected}, explanation: {explanation}")
+            print(f"{original_item.get('title')} selected: {is_selected}")
 
             if is_selected and isinstance(idx, int) and 0 <= idx < len(shortlist):
-                item = shortlist[idx].copy()
-                item['selection_explanation'] = explanation
-                selected_items.append(item)
+                selected_items.append(original_item)
 
             if len(selected_items) >= max_items:
                 break
 
         # If we didn't get enough valid selections, fill with remaining top items
         if len(selected_items) < max_items:
-            print(f"⚠️  LLM selected {len(selected_items)}/{max_items} items. Filling with top embedding scores.")
+            print(f"⚠️  LLM selected {len(selected_items)}/{max_items} items. Filling with remaining items.")
             for item in shortlist:
                 if item not in selected_items:
                     selected_items.append(item)
