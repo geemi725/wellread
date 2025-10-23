@@ -1,3 +1,5 @@
 https://www.wired.com/feed/tag/ai/latest/rss
 https://knowtechie.com/category/ai/feed/
-https://hnrss.org/newest"
+https://hnrss.org/newest
+https://thesequence.substack.com/feed
+https://the-decoder.com/feed/
