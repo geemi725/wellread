@@ -50,7 +50,7 @@ jobs:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           TIMEFRAME_HOURS: ${{ secrets.TIMEFRAME_HOURS || '24' }}
           MAX_ITEMS_TO_POST: ${{ secrets.MAX_ITEMS_TO_POST || '20' }}
-        run: uv run python src/main.py
+        run: uv run python src/newsbot.py
 
       - name: Upload logs on failure
         if: failure()

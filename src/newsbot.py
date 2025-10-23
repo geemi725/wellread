@@ -39,9 +39,7 @@ async def main():
 
     TIMEFRAME_HOURS = config['timeframe_hours']
     MAX_ITEMS_TO_POST = config['max_items_to_post']
-    MIN_RELEVANCE_SCORE = config['min_relevance_score']
     EMBEDDING_CACHE_DIR = config['embedding_cache_dir']
-    SHORTLIST_MULTIPLIER = config['shortlist_multiplier']
     SELECTION_GUIDANCE_PROMPT = config['selection_guidance_prompt']
 
     # Article cache configuration
@@ -102,9 +100,9 @@ async def main():
 
         print(f'🤖 Using LLM to select top {MAX_ITEMS_TO_POST} items from retrived news items...')
         curated_items = await curator.llm_select_items(
-            recent_items,
-            SELECTION_GUIDANCE_PROMPT,
-            MAX_ITEMS_TO_POST,
+            shortlist=recent_items,
+            guidance_prompt=SELECTION_GUIDANCE_PROMPT,
+            max_items=MAX_ITEMS_TO_POST,
             model=SELECTION_MODEL
         )
         print(f'Selected {len(curated_items)} items for posting')
