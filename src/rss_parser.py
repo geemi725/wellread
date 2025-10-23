@@ -143,11 +143,7 @@ class RSSFeedParser:
         return filtered_items
 
 
-class RSSNewsParser:
-    def __init__(self,url: str):
-        self.url = url
-
-    def parse_rss_feed(rss_content):
+    def parse_rss_newsfeed(self, url: str) -> List[Dict[str, Any]]:
         """
         Parse RSS feed and extract article information
         
@@ -158,8 +154,8 @@ class RSSNewsParser:
             List of dictionaries containing article info
         """
         # Parse the feed (works with both URLs and strings)
-        feed = feedparser.parse(rss_content)
-        feed_name = rss_content.split("/")[2]
+        feed = feedparser.parse(url)
+        feed_name = url.split("/")[2]
         articles = []
         for entry in feed.entries:
             desc = entry.get('description', '')

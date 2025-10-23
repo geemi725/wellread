@@ -5,14 +5,14 @@ import sys
 import json
 import asyncio
 import traceback
-from rss_parser import RSSNewsParser
+from rss_parser import RSSFeedParser
 from curator import ContentCurator
 from slack_poster import SlackPoster
 from article_cache import ArticleCache
 
 
 async def main():
-    print('🤖 WellRead Bot Starting...')
+    print('🤖 AI News Digest Bot Starting...')
 
     # Load environment variables
     ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
@@ -58,7 +58,7 @@ async def main():
         print(f'💾 Article cache enabled')
 
     # Initialize components
-    feed_parser = RSSNewsParser()
+    feed_parser = RSSFeedParser()
     curator = ContentCurator(OPENAI_API_KEY, anthropic_api_key=ANTHROPIC_API_KEY, cache_dir=EMBEDDING_CACHE_DIR)
 
     # Initialize article cache if enabled
@@ -81,7 +81,7 @@ async def main():
         print('🔍 Fetching RSS feeds...')
         recent_items = []
         for feed_url in feed_urls:
-            feed_items = feed_parser.parse_rss_feed(feed_url)
+            feed_items = feed_parser.parse_rss_newsfeed(feed_url)
             recent_items.extend(feed_items)
 
         print(f'Found {len(recent_items)} news items')
