@@ -1,10 +1,13 @@
-name: Daily RSS Digest
+name: Daily RSS AI News Digest
 
 on:
   schedule:
     # Run daily at 9 AM UTC (adjust to your preference)
     - cron: '0 9 * * 1-5'
   workflow_dispatch: # Allow manual triggering
+  push:
+    branches:
+      - news-bot # branch name to trigger the workflow
 
 jobs:
   run-digest:
@@ -13,15 +16,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Cache embeddings
-        uses: actions/cache@v4
-        with:
-          path: cache/embeddings
-          key: embeddings-${{ hashFiles('topics.txt') }}
-          restore-keys: |
-            embeddings-
-
       - name: Cache posted articles
         uses: actions/cache@v4
         with:
@@ -50,7 +44,7 @@ jobs:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           TIMEFRAME_HOURS: ${{ secrets.TIMEFRAME_HOURS || '24' }}
           MAX_ITEMS_TO_POST: ${{ secrets.MAX_ITEMS_TO_POST || '20' }}
-        run: uv run python src/main.py
+        run: uv run python src/newsbot.py
 
       - name: Upload logs on failure
         if: failure()

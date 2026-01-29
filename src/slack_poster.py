@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime
+from operator import ne
 from typing import List, Dict, Any
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
@@ -184,3 +185,101 @@ class SlackPoster:
         await self.post_all_papers(channel, papers)
 
         print('All papers posted!')
+
+    async def post_news_item(self, channel: str, news_item: Dict[str, Any], index: int, total: int):
+        try:
+            message = {
+                'channel': channel,
+                'text': news_item.get('title', 'No title'),
+                'blocks': [
+                    {
+                        'type': 'section',
+                        'text': {
+                            'type': 'mrkdwn',
+                            'text': f"*<{news_item.get('link', '')}|{news_item.get('title', 'No title')}>*\n\n{news_item.get('description', '')}"
+                        }
+                    },
+                    {
+                        'type': 'context',
+                        'elements': [
+                            {
+                                'type': 'mrkdwn',
+                                'text': f"*{index}/{total}* • {news_item.get('feed_source', 'Unknown')} • {news_item.get('published', 'Unknown date')}"
+                            }
+                        ]
+                    }
+                ]
+            }
+
+            loop = asyncio.get_event_loop()
+            paper_result = await loop.run_in_executor(
+                None,
+                lambda: self.client.chat_postMessage(**message)
+            )
+
+            return paper_result['ts']
+        except SlackApiError as error:
+            print(f"Error posting paper \"{news_item.get('title', 'Unknown')}\": {error.response['error']}")
+            raise error
+
+    async def post_news_items(self, channel: str, news_items: List[Dict[str, Any]]):
+        """Post header, then links to news items."""
+        print(f"Posting header to channel {channel}...")
+        today = datetime.now().strftime('%B %d, %Y at %I:%M %p')
+
+        message = {
+            'channel': channel,
+            'text': f"📰 AI News Digest - {today}",
+            'blocks': [
+                {
+                    'type': 'divider'
+                },
+                {
+                    'type': 'header',
+                    'text': {
+                        'type': 'plain_text',
+                        'text': f"📰 AI News Digest"
+                    }
+                },
+                {
+                    'type': 'context',
+                    'elements': [
+                        {
+                            'type': 'mrkdwn',
+                            'text': f"_{today}_"
+                        }
+                    ]
+                },
+                {
+                    'type': 'divider'
+                }
+            ]
+        }
+
+        try:
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(
+                None,
+                lambda: self.client.chat_postMessage(**message)
+            )
+        
+        except SlackApiError as error:
+            print(f"Error posting header: {error.response['error']}")
+            raise error
+
+        # Small delay after header
+        await asyncio.sleep(1)
+
+        print(f"Posting {len(news_items)} news items...")
+
+        # Post each news item as a top-level message
+        timestamps = []
+        for i, news_item in enumerate(news_items):
+            ts = await self.post_news_item(channel, news_item, i + 1, len(news_items))
+            timestamps.append(ts)
+
+            # Rate limiting between news items
+            if i < len(news_items) - 1:
+                await asyncio.sleep(1)
+
+        print('All news items posted!')
