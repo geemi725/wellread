@@ -3,3 +3,7 @@ https://knowtechie.com/category/ai/feed/
 https://hnrss.org/newest
 https://thesequence.substack.com/feed
 https://the-decoder.com/feed/
+http://news.ycombinator.com/rss
+http://blog.samaltman.com/posts.atom
+http://andrewchen.co/feed/
+http://www.forbes.com/entrepreneurs/index.xml
